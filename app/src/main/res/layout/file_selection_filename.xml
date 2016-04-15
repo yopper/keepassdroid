@@ -58,4 +58,11 @@
   	  android:layout_below="@id/file_filename"
   	  android:layout_toRightOf="@id/open"
   	  android:width="100sp"/>
+	<Button android:id="@+id/import_secure"
+		android:text="@string/menu_import_secure"
+		android:layout_height="wrap_content"
+		android:layout_width="wrap_content"
+		android:layout_below="@id/file_filename"
+		android:layout_toRightOf="@id/create"
+		android:minWidth="100sp"/>
 </RelativeLayout>

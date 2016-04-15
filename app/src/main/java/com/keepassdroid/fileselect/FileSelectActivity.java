@@ -19,12 +19,14 @@
  */
 package com.keepassdroid.fileselect;
 
+import android.annotation.SuppressLint;
 import android.app.ListActivity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -50,6 +52,7 @@ import com.keepassdroid.PasswordActivity;
 import com.keepassdroid.ProgressTask;
 import com.keepassdroid.SetPasswordDialog;
 import com.keepassdroid.app.App;
+import com.keepassdroid.compat.BuildCompat;
 import com.keepassdroid.compat.StorageAF;
 import com.keepassdroid.database.edit.CreateDB;
 import com.keepassdroid.database.edit.FileOnFinish;
@@ -63,9 +66,12 @@ import com.keepassdroid.utils.Util;
 import com.keepassdroid.view.FileNameView;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.security.KeyStore;
 
 public class FileSelectActivity extends ListActivity {
 
@@ -102,6 +108,62 @@ public class FileSelectActivity extends ListActivity {
 
 				try {
 					PasswordActivity.Launch(FileSelectActivity.this, fileName);
+				}
+				catch (ContentFileNotFoundException e) {
+					Toast.makeText(FileSelectActivity.this,
+							R.string.file_not_found_content, Toast.LENGTH_LONG).show();
+				}
+				catch (FileNotFoundException e) {
+					Toast.makeText(FileSelectActivity.this,
+							R.string.FileNotFound, Toast.LENGTH_LONG).show();
+				}
+
+			}
+		});
+		findViewById(R.id.import_secure).setOnClickListener(new View.OnClickListener() {
+
+			@SuppressLint("NewApi")
+			public void onClick(View v) {
+				String s = Util.getEditText(FileSelectActivity.this,
+						R.id.file_filename);
+				File srcFile = null;
+				if (s.length() > 0) {
+					srcFile = new File(s);
+					if (!srcFile.exists()) {
+						srcFile = null;
+					}
+				}
+				if (srcFile == null) {
+					Toast.makeText(FileSelectActivity.this,
+							R.string.file_not_found_content, Toast.LENGTH_LONG).show();
+					return;
+				}
+				// copy to internal storage.
+				File rootDir;
+				if (BuildCompat.getSdkVersion() >= BuildCompat.VERSION_LOLLIPOP) {
+					rootDir = getNoBackupFilesDir();
+				} else {
+					rootDir = getFilesDir();
+				}
+				File dstFile =  new File(rootDir, getString(R.string.secure_file_name));
+				dstFile.getParentFile().mkdirs();
+				FileOutputStream os = null;
+				FileInputStream is = null;
+				try {
+					os = new FileOutputStream(dstFile, false);
+					is = new FileInputStream(srcFile);
+					Util.copyStream(is, os);
+					is.close();
+					os.close();
+				} catch (IOException e) {
+					Toast.makeText(FileSelectActivity.this,
+							R.string.error_file_not_create, Toast.LENGTH_LONG).show();
+					return;
+				}
+				fileHistory.deleteFile(Uri.fromFile(srcFile));
+				srcFile.delete();
+				try {
+					PasswordActivity.Launch(FileSelectActivity.this, dstFile.getAbsolutePath());
 				}
 				catch (ContentFileNotFoundException e) {
 					Toast.makeText(FileSelectActivity.this,
