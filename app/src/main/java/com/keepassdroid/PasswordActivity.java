@@ -22,7 +22,7 @@ package com.keepassdroid;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
-import android.content.ClipData;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -34,6 +34,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -69,7 +70,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 
 public class PasswordActivity extends LockingActivity {
-
+    private static final String TAG = "PasswordActivity";
     public static final String KEY_DEFAULT_FILENAME = "defaultFileName";
     private static final String KEY_FILENAME = "fileName";
     private static final String KEY_KEYFILE = "keyFile";
@@ -266,6 +267,7 @@ public class PasswordActivity extends LockingActivity {
         loadDatabase(pass, UriUtil.parseDefaultFile(keyfile));
     }
 
+    private int mLoadRetry = 0;
     private void loadDatabase(String pass, Uri keyfile)
     {
         if ( pass.length() == 0 && (keyfile == null || keyfile.toString().length() == 0)) {
@@ -281,7 +283,8 @@ public class PasswordActivity extends LockingActivity {
         App.clearShutdown();
 
         Handler handler = new Handler();
-        LoadDB task = new LoadDB(db, PasswordActivity.this, mDbUri, pass, keyfile, new AfterLoad(handler, db));
+        ++mLoadRetry;
+        LoadDB task = new LoadDB(db, PasswordActivity.this, mDbUri, pass, keyfile, new AfterLoad(handler, db, mLoadRetry >= 5));
         ProgressTask pt = new ProgressTask(PasswordActivity.this, task, R.string.loading_database);
         pt.run();
     }
@@ -327,15 +330,24 @@ public class PasswordActivity extends LockingActivity {
 
     private final class AfterLoad extends OnFinish {
         private Database db;
+        private boolean deleteOnFail;
 
-        public AfterLoad(Handler handler, Database db) {
+        public AfterLoad(Handler handler, Database db, boolean deleteOnFail) {
             super(handler);
 
             this.db = db;
+            this.deleteOnFail = deleteOnFail;
         }
 
         @Override
         public void run() {
+            if (deleteOnFail && !mSuccess) {
+                if (deleteDb()) {
+                    displayMessage(PasswordActivity.this);
+                    finish();
+                    return;
+                }
+            }
             if ( db.passwordEncodingError) {
                 PasswordEncodingDialogHelper dialog = new PasswordEncodingDialogHelper();
                 dialog.show(PasswordActivity.this, new OnClickListener() {
@@ -351,6 +363,34 @@ public class PasswordActivity extends LockingActivity {
             } else {
                 displayMessage(PasswordActivity.this);
             }
+        }
+
+        private boolean deleteDb() {
+            Uri uri = db.mUri;
+            if (uri == null) {
+                return false;
+            }
+            String scheme = uri.getScheme();
+            Log.d(TAG, "Deleting Db URI=" + uri);
+            if (scheme == null || scheme.length() == 0 || ContentResolver.SCHEME_FILE.equals(scheme)) {
+                try {
+                    String path = uri.getPath();
+                    boolean deleted = new File(path).delete();
+                    Log.d(TAG, "Db deleted, path="+path + ", deleted=" + deleted);
+                    return deleted;
+                } catch (Exception e) {
+                    Log.d(TAG, "Unsupported Db URI=" + uri);
+                }
+            } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)) {
+                try {
+                    getContentResolver().delete(uri, null, null);
+                    return true;
+                } catch (Exception e) {
+                    Log.d(TAG, "Unsupported Db URI=" + uri);
+                }
+            }
+            Log.d(TAG, "Unsupported Db URI=" + uri);
+            return false;
         }
     }
 
