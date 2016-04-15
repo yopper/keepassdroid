@@ -6,11 +6,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.keepass.R;
 import com.keepassdroid.intents.Intents;
 import com.keepassdroid.services.TimeoutService;
+import com.keepassdroid.utils.Util;
 
 public class Timeout {
 	private static final int REQUEST_ID = 0;
@@ -23,34 +25,52 @@ public class Timeout {
 
 		return sender;
 	}
-	
-	public static void start(Context ctx) {
 
+    private static String mCurrentText;
+    public static void registerCurrentText(Context ctx) {
+        mCurrentText = Util.getClipboard(ctx);
+    }
 
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-		String sTimeout = prefs.getString(ctx.getString(R.string.app_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
-		
-		long timeout;
-		try {
-			timeout = Long.parseLong(sTimeout);
-		} catch (NumberFormatException e) {
-			timeout = DEFAULT_TIMEOUT;
-		}
-		
-		if ( timeout == -1 ) {
-			// No timeout don't start timeout service
-			return;
-		}
-		
+    public static void start(Context ctx) {
+        String cur = Util.getClipboard(ctx);
+        // Ignore space because set space to clear clipboard.
+        if (cur != null && cur.trim().length() > 0 && !TextUtils.equals(cur, mCurrentText)) {
+            Intent intent = new Intent(Intents.CLEAR_CLIPBOARD);
+            intent.putExtra(Intent.EXTRA_TEXT, cur);
+            PendingIntent sender = PendingIntent.getService(ctx, REQUEST_ID, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            am.cancel(sender);
+
+            start(ctx, sender, 20 * 1000);
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String sTimeout = prefs.getString(ctx.getString(R.string.app_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
+
+        long timeout;
+        try {
+            timeout = Long.parseLong(sTimeout);
+        } catch (NumberFormatException e) {
+            timeout = DEFAULT_TIMEOUT;
+        }
+
+        if ( timeout == -1 ) {
+            // No timeout don't start timeout service
+            return;
+        }
+        start(ctx, buildIntent(ctx), timeout);
+    }
+    private static void start(Context ctx, PendingIntent sender, long timeout) {
+
 		ctx.startService(new Intent(ctx, TimeoutService.class));
 
 		long triggerTime = System.currentTimeMillis() + timeout;
 		AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
 		
 		Log.d(TAG, "Timeout start");
-		am.set(AlarmManager.RTC, triggerTime, buildIntent(ctx));
+		am.set(AlarmManager.RTC, triggerTime, sender);
 	}
-	
+
 	public static void cancel(Context ctx) {
 		AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
 		

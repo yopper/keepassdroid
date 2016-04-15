@@ -445,7 +445,7 @@ public class EntryActivity extends LockCloseHideActivity {
 			
 			if ( currentClip.equals(mClearText) ) {
 				try {
-					Util.copyToClipboard(mCtx, "");
+					Util.clearClipboard(mCtx);
 					uiThreadCallback.post(new UIToastTask(mCtx, R.string.ClearClipboard));
 				} catch (SamsungClipboardException e) {
 					uiThreadCallback.post(new UIToastTask(mCtx, R.string.clipboard_error_clear));

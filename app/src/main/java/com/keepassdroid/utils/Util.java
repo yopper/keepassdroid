@@ -53,6 +53,11 @@ public class Util {
 			throw new SamsungClipboardException(e);
 		}
 	}
+
+	public static void clearClipboard(Context context) throws SamsungClipboardException {
+		// Empty string doesn't clear the clipboard.
+		copyToClipboard(context, " ");
+	}
 	
 	public static void gotoUrl(Context context, String url) throws ActivityNotFoundException {
 		if ( url != null && url.length() > 0 ) {

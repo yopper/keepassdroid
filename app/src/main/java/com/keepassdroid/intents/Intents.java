@@ -20,7 +20,8 @@
 
 public class Intents {
 	public static final String TIMEOUT = "com.keepassdroid.timeout";
-	
+	public static final String CLEAR_CLIPBOARD = "com.keepassdroid.CLEAR_CLIPBOARD";
+
 	public static final String COPY_USERNAME = "com.keepassdroid.copy_username";
 	public static final String COPY_PASSWORD = "com.keepassdroid.copy_password";
 

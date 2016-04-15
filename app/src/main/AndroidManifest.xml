@@ -105,6 +105,11 @@
         <activity android:name="com.keepassdroid.GeneratePasswordActivity"
             android:theme="@style/NoTitleBar"></activity>
         <service android:name="com.keepassdroid.services.TimeoutService"></service>
+        <service android:name="com.keepassdroid.services.ClearClipboardService">
+            <intent-filter>
+                <action android:name="com.keepassdroid.CLEAR_CLIPBOARD" />
+            </intent-filter>
+        </service>
         <meta-data android:name="com.a0soft.gphone.aTrackDog.webURL" android:value="http://keepassdroid.com" />
     </application>
 </manifest> 
