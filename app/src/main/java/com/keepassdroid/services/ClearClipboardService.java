@@ -42,31 +42,41 @@ public class ClearClipboardService extends IntentService {
     @Override
 	protected void onHandleIntent(Intent intent) {
         if ( Intents.CLEAR_CLIPBOARD.equals(intent.getAction()) ) {
-            clearClipboard(this, intent.getStringExtra(Intent.EXTRA_TEXT));
+            if (!clearClipboard(this, intent.getStringExtra(Intent.EXTRA_TEXT))) {
+                stopSelf();
+            }
         }
 	}
 
-	private void clearClipboard(Context ctx, String toClear) {
+	private boolean clearClipboard(Context ctx, String toClear) {
         if (toClear == null) {
-            return;
+            return false;
         }
 		Log.d(TAG, "Timeout(Clipboard)");
 		try {
 			String s  = Util.getClipboard(ctx);
 			if (s == null || s.length() == 0) {
-				return;
+				return false;
 			}
 			if (toClear == null || TextUtils.equals(toClear, s)) {
                 Util.clearClipboard(ctx);
 				Log.d(TAG, "Clipboard cleared");
                 Looper l = Looper.getMainLooper();
                 if (l != null) {
-                    new Handler(l).post(new UIToastTask(ctx, R.string.ClearClipboard));
+                    new Handler(l).post(new UIToastTask(ctx, R.string.ClearClipboard){
+                        @Override
+                        public void run() {
+                            super.run();
+                            stopSelf();
+                        }
+                    });
+                    return true;
                 }
             }
 		} catch (Exception e) {
 			Log.e(TAG, "Clear clip failed." + e);
 		}
+        return false;
 	}
 
     @Override
