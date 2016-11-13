@@ -160,7 +160,8 @@ public class FileSelectActivity extends ListActivity {
 							R.string.error_file_not_create, Toast.LENGTH_LONG).show();
 					return;
 				}
-				fileHistory.deleteFile(Uri.fromFile(srcFile));
+				// add to history.
+				fileHistory.createFile(Uri.fromFile(srcFile), null);
 				srcFile.delete();
 				try {
 					PasswordActivity.Launch(FileSelectActivity.this, dstFile.getAbsolutePath());
