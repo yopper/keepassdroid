@@ -49,6 +49,7 @@ public class Util {
 		
 		try {
 			clipboard.setText(text);
+			mLastClipboard = text;
 		} catch (NullPointerException e) {
 			throw new SamsungClipboardException(e);
 		}
@@ -57,6 +58,12 @@ public class Util {
 	public static void clearClipboard(Context context) throws SamsungClipboardException {
 		// Empty string doesn't clear the clipboard.
 		copyToClipboard(context, " ");
+		mLastClipboard = null;
+	}
+
+	private static volatile String mLastClipboard;
+	public static String getLastClipboard() {
+		return mLastClipboard;
 	}
 	
 	public static void gotoUrl(Context context, String url) throws ActivityNotFoundException {

@@ -12,6 +12,7 @@ import android.util.Log;
 import com.android.keepass.R;
 import com.keepassdroid.intents.Intents;
 import com.keepassdroid.services.TimeoutService;
+import com.keepassdroid.utils.EmptyUtils;
 import com.keepassdroid.utils.Util;
 
 public class Timeout {
@@ -26,32 +27,9 @@ public class Timeout {
 		return sender;
 	}
 
-    private static String mClipboardOnResume;
-    public static void resume(Context ctx) {
-        mClipboardOnResume = Util.getClipboard(ctx);
-    }
-
     public static void start(Context ctx) {
-        String cur = Util.getClipboard(ctx);
+        scheduleClearClipboard(ctx);
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
-        // Ignore space because set space to clear clipboard.
-        if (cur != null && cur.trim().length() > 0 && !TextUtils.equals(cur, mClipboardOnResume)) {
-            // Clipboard is updated, assume password or username is copied to clipboard.
-
-            String sClipClear = prefs.getString(ctx.getString(R.string.clipboard_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
-            long clipClearTime = Long.parseLong(sClipClear);
-            if (clipClearTime > 0) {
-
-                Intent intent = new Intent(Intents.CLEAR_CLIPBOARD);
-                intent.putExtra(Intent.EXTRA_TEXT, cur);
-                PendingIntent sender = PendingIntent.getService(ctx, REQUEST_ID, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-
-                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-                am.cancel(sender);
-
-                start(ctx, sender, clipClearTime);
-            }
-        }
         String sTimeout = prefs.getString(ctx.getString(R.string.app_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
 
         long timeout;
@@ -66,6 +44,32 @@ public class Timeout {
             return;
         }
         start(ctx, buildIntent(ctx), timeout);
+    }
+
+    private static boolean scheduleClearClipboard(Context ctx) {
+        String last = Util.getLastClipboard();
+        if (EmptyUtils.isNullOrEmpty(last)) {
+            return false;
+        }
+        String cur = Util.getClipboard(ctx);
+        if (!TextUtils.equals(cur, last)) {
+            return false;
+        }
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        String sClipClear = prefs.getString(ctx.getString(R.string.clipboard_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
+        long clipClearTime = Long.parseLong(sClipClear);
+        if (clipClearTime <= 0) {
+            return false;
+        }
+        Intent intent = new Intent(Intents.CLEAR_CLIPBOARD);
+        intent.putExtra(Intent.EXTRA_TEXT, cur);
+        PendingIntent sender = PendingIntent.getService(ctx, REQUEST_ID, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        am.cancel(sender);
+
+        start(ctx, sender, clipClearTime);
+        return true;
     }
     private static void start(Context ctx, PendingIntent sender, long timeout) {
 

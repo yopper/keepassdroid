@@ -52,7 +52,6 @@ public class TimeoutHelper {
 	public static void resume(Activity act) {
 		if ( App.getDB().Loaded() ) {
 	        Timeout.cancel(act);
-			Timeout.resume(act);
 		}
 
 		
