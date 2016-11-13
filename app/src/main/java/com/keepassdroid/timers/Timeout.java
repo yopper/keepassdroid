@@ -26,25 +26,32 @@ public class Timeout {
 		return sender;
 	}
 
-    private static String mCurrentText;
-    public static void registerCurrentText(Context ctx) {
-        mCurrentText = Util.getClipboard(ctx);
+    private static String mClipboardOnResume;
+    public static void resume(Context ctx) {
+        mClipboardOnResume = Util.getClipboard(ctx);
     }
 
     public static void start(Context ctx) {
         String cur = Util.getClipboard(ctx);
-        // Ignore space because set space to clear clipboard.
-        if (cur != null && cur.trim().length() > 0 && !TextUtils.equals(cur, mCurrentText)) {
-            Intent intent = new Intent(Intents.CLEAR_CLIPBOARD);
-            intent.putExtra(Intent.EXTRA_TEXT, cur);
-            PendingIntent sender = PendingIntent.getService(ctx, REQUEST_ID, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-
-            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-            am.cancel(sender);
-
-            start(ctx, sender, 20 * 1000);
-        }
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+        // Ignore space because set space to clear clipboard.
+        if (cur != null && cur.trim().length() > 0 && !TextUtils.equals(cur, mClipboardOnResume)) {
+            // Clipboard is updated, assume password or username is copied to clipboard.
+
+            String sClipClear = prefs.getString(ctx.getString(R.string.clipboard_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
+            long clipClearTime = Long.parseLong(sClipClear);
+            if (clipClearTime > 0) {
+
+                Intent intent = new Intent(Intents.CLEAR_CLIPBOARD);
+                intent.putExtra(Intent.EXTRA_TEXT, cur);
+                PendingIntent sender = PendingIntent.getService(ctx, REQUEST_ID, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+                am.cancel(sender);
+
+                start(ctx, sender, clipClearTime);
+            }
+        }
         String sTimeout = prefs.getString(ctx.getString(R.string.app_timeout_key), ctx.getString(R.string.clipboard_timeout_default));
 
         long timeout;
