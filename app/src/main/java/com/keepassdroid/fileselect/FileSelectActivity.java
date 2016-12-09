@@ -26,7 +26,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
@@ -71,12 +70,12 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URLDecoder;
-import java.security.KeyStore;
 
 public class FileSelectActivity extends ListActivity {
 
 	private static final int CMENU_CLEAR = Menu.FIRST;
-	
+	private static final int CMENU_SET = Menu.FIRST + 1;
+
 	public static final int FILE_BROWSE = 1;
 	public static final int GET_CONTENT = 2;
 	public static final int OPEN_DOC = 3;
@@ -497,7 +496,8 @@ public class FileSelectActivity extends ListActivity {
 			ContextMenuInfo menuInfo) {
 		super.onCreateContextMenu(menu, v, menuInfo);
 		
-		menu.add(0, CMENU_CLEAR, 0, R.string.remove_from_filelist);
+		menu.add(0, CMENU_SET, 0, R.string.set_as_input_from_filelist);
+		menu.add(0, CMENU_CLEAR, 1, R.string.remove_from_filelist);
 	}
 
 	@Override
@@ -521,6 +521,13 @@ public class FileSelectActivity extends ListActivity {
 				}
 			}.execute(filename);
 			return true;
+		} else if ( item.getItemId() == CMENU_SET) {
+			AdapterContextMenuInfo acmi = (AdapterContextMenuInfo) item.getMenuInfo();
+
+			TextView tv = (TextView) acmi.targetView;
+			String filename = tv.getText().toString();
+			Util.setEditText(FileSelectActivity.this,
+						R.id.file_filename, filename);
 		}
 		
 		return false;
